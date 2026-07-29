@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-3xl w-full bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center space-y-6">
+        
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-3xl font-bold tracking-tight text-blue-500">AI Lecturer Interviewer</h1>
+            <p class="text-gray-400 text-sm mt-1">Practice your lecture delivery & answer evaluation in real-time</p>
+        </header>
+
+        <!-- Video Container -->
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 shadow-inner flex items-center justify-center">
+            <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div id="statusBadge" class="absolute top-3 left-3 bg-red-600/80 text-xs px-3 py-1 rounded-full font-semibold backdrop-blur-md">
+                Camera Inactive
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-4">
+            <button id="startBtn" onclick="toggleRecording()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition duration-200 shadow-lg flex items-center gap-2">
+                <span id="btnText">Start Answer</span>
+            </button>
+        </div>
+
+        <!-- Output Box -->
+        <div class="w-full space-y-4">
+            <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+                <h3 class="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Your Answer Transcript</h3>
+                <p id="userTranscript" class="text-gray-300 italic">Click "Start Answer" and speak your answer...</p>
+            </div>
+
+            <div class="bg-blue-950/30 p-4 rounded-xl border border-blue-800/40">
+                <h3 class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">Interviewer Feedback</h3>
+                <p id="aiResponse" class="text-gray-200">Waiting for your answer...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Set your backend URL here (Replace with your Railway/Koyeb URL)
+        const BACKEND_URL = 'http://127.0.0.1:8000';
+
+        const webcamElement = document.getElementById('webcam');
+        const statusBadge = document.getElementById('statusBadge');
+        const startBtn = document.getElementById('startBtn');
+        const btnText = document.getElementById('btnText');
+        const userTranscript = document.getElementById('userTranscript');
+        const aiResponse = document.getElementById('aiResponse');
+
+        let recognition;
+        let isRecording = false;
+
+        // Initialize Webcam
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                webcamElement.srcObject = stream;
+                statusBadge.textContent = "Live Camera";
+                statusBadge.className = "absolute top-3 left-3 bg-green-600/80 text-xs px-3 py-1 rounded-full font-semibold backdrop-blur-md";
+            } catch (err) {
+                console.error("Camera access error:", err);
+                statusBadge.textContent = "Camera Blocked";
+            }
+        }
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userTranscript.textContent = `"${transcript}"`;
+                sendToBackend(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Recognition Error:", event.error);
+                btnText.textContent = "Start Answer";
+                isRecording = false;
+            };
+
+            recognition.onend = () => {
+                btnText.textContent = "Start Answer";
+                isRecording = false;
+            };
+        } else {
+            alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
+        }
+
+        function toggleRecording() {
+            if (!recognition) return;
+
+            if (!isRecording) {
+                recognition.start();
+                isRecording = true;
+                btnText.textContent = "Listening...";
+                userTranscript.textContent = "Listening to your response...";
+            } else {
+                recognition.stop();
+                isRecording = false;
+                btnText.textContent = "Start Answer";
+            }
+        }
+
+        async function sendToBackend(transcript) {
+            aiResponse.textContent = "Evaluating your response...";
+            try {
+                const response = await fetch(`${BACKEND_URL}/interview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transcript: transcript })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    aiResponse.textContent = data.response;
+                } else {
+                    aiResponse.textContent = `Error: ${data.detail || 'Failed to analyze answer.'}`;
+                }
+            } catch (error) {
+                console.error("Backend request failed:", error);
+                aiResponse.textContent = "Error connecting to server. Check your BACKEND_URL configuration.";
+            }
+        }
+
+        window.onload = initCamera;
+    </script>
+</body>
+</html>
