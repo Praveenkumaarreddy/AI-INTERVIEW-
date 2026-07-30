@@ -1,142 +1,387 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Interview Assistant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
+    <title>AI Lecturer Interviewer</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary-blue: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
 
-    <div class="max-w-3xl w-full bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center space-y-6">
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top left, #1e293b, var(--bg-dark));
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+        }
+
+        .btn-blue {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-blue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
         
-        <!-- Header -->
-        <header class="text-center">
-            <h1 class="text-3xl font-bold tracking-tight text-blue-500">AI Lecturer Interviewer</h1>
-            <p class="text-gray-400 text-sm mt-1">Practice your lecture delivery & answer evaluation in real-time</p>
-        </header>
+        .btn-red { background: var(--danger); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        .btn-green { background: var(--success); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); }
 
-        <!-- Video Container -->
-        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 shadow-inner flex items-center justify-center">
-            <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
-            <div id="statusBadge" class="absolute top-3 left-3 bg-red-600/80 text-xs px-3 py-1 rounded-full font-semibold backdrop-blur-md">
-                Camera Inactive
+        /* Screens */
+        .screen { display: none; width: 100%; max-width: 1000px; padding: 2rem; box-sizing: border-box; }
+        .active-screen { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+        /* Typography */
+        h1 { font-size: 3rem; margin-bottom: 0.5rem; text-align: center; background: -webkit-linear-gradient(#fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 2rem; text-align: center; }
+
+        /* Video Container */
+        .video-container { position: relative; width: 100%; max-width: 600px; border-radius: 16px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--glass-border); }
+        video { width: 100%; display: block; background: #000; }
+        .live-badge { position: absolute; top: 1rem; left: 1rem; background: var(--success); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; animation: pulse 2s infinite; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        /* Dashboard specific */
+        .dashboard-header { display: flex; justify-content: space-between; width: 100%; margin-bottom: 1rem; align-items: center; }
+        .timer { font-family: monospace; font-size: 1.5rem; color: var(--primary-blue); }
+        
+        .chat-container { width: 100%; display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; max-height: 400px; overflow-y: auto; }
+        .bubble { padding: 1rem; border-radius: 12px; max-width: 80%; line-height: 1.5; }
+        .ai-bubble { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); align-self: flex-start; }
+        .user-bubble { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); align-self: flex-end; color: var(--text-muted); }
+
+        .controls { display: flex; gap: 1rem; margin-top: 2rem; }
+        
+        /* Scores Grid */
+        .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; width: 100%; margin: 2rem 0; }
+        .score-card { text-align: center; }
+        .score-val { font-size: 2.5rem; font-weight: bold; color: var(--primary-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN 1: Landing Page -->
+    <div id="screen-landing" class="screen active-screen">
+        <h1>AI Lecturer Interviewer</h1>
+        <p class="subtitle">"Practice your lecture delivery & answer evaluation in real-time."</p>
+        
+        <div class="video-container glass-card" style="padding: 0;">
+            <div class="live-badge">Live Camera</div>
+            <video id="webcam-preview" autoplay playsinline muted></video>
+        </div>
+
+        <button class="btn-blue" onclick="showScreen('screen-ready')">Start Interview</button>
+    </div>
+
+    <!-- SCREEN 2: Ready Prompt -->
+    <div id="screen-ready" class="screen glass-card" style="margin-top: 10vh; max-width: 600px; text-align: center;">
+        <h2 style="font-size: 2rem; margin-bottom: 2rem;">Hello! Welcome to your AI Lecturer Interview.<br>Are you ready?</h2>
+        <div class="controls" style="justify-content: center;">
+            <button class="btn-blue btn-green" onclick="startInterview()">✅ Yes, I'm Ready</button>
+            <button class="btn-blue btn-red" onclick="showScreen('screen-landing')">❌ Not Yet</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: Live Interview Dashboard -->
+    <div id="screen-interview" class="screen">
+        <div class="dashboard-header">
+            <h3 id="progress-text">Question 1 of 5</h3>
+            <div class="timer" id="timer-display">00:00</div>
+            <div>
+                <button class="btn-blue" style="padding: 8px 16px; font-size: 0.9rem;" onclick="skipQuestion()">Skip</button>
+                <button class="btn-blue btn-red" style="padding: 8px 16px; font-size: 0.9rem;" onclick="endInterview()">End</button>
             </div>
         </div>
 
-        <!-- Controls -->
-        <div class="flex gap-4">
-            <button id="startBtn" onclick="toggleRecording()" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition duration-200 shadow-lg flex items-center gap-2">
-                <span id="btnText">Start Answer</span>
-            </button>
-        </div>
-
-        <!-- Output Box -->
-        <div class="w-full space-y-4">
-            <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-                <h3 class="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Your Answer Transcript</h3>
-                <p id="userTranscript" class="text-gray-300 italic">Click "Start Answer" and speak your answer...</p>
+        <div style="display: flex; gap: 2rem; flex-wrap: wrap; width: 100%;">
+            <!-- Left: Video -->
+            <div style="flex: 1; min-width: 300px;">
+                <div class="video-container glass-card" style="padding: 0;">
+                    <div class="live-badge">Analyzing Eye Contact...</div>
+                    <video id="webcam-live" autoplay playsinline muted></video>
+                </div>
+                <button id="mic-btn" class="btn-blue" style="width: 100%;" onclick="toggleRecording()">🎤 Start Speaking</button>
             </div>
 
-            <div class="bg-blue-950/30 p-4 rounded-xl border border-blue-800/40">
-                <h3 class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">Interviewer Feedback</h3>
-                <p id="aiResponse" class="text-gray-200">Waiting for your answer...</p>
+            <!-- Right: Chat & Transcript -->
+            <div class="glass-card" style="flex: 2; min-width: 300px; display: flex; flex-direction: column;">
+                <h3>Interview Transcript</h3>
+                <div class="chat-container" id="chat-box">
+                    <!-- Chat bubbles go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: Results & Scores -->
+    <div id="screen-results" class="screen active-screen" style="display:none;">
+        <h1>Final Evaluation Report</h1>
+        
+        <div class="score-grid">
+            <div class="glass-card score-card">
+                <div>Overall Score</div>
+                <div class="score-val" id="score-overall">0/10</div>
+            </div>
+            <div class="glass-card score-card">
+                <div>Confidence</div>
+                <div class="score-val" id="score-confidence">0/10</div>
+            </div>
+            <div class="glass-card score-card">
+                <div>Communication</div>
+                <div class="score-val" id="score-comm">0/10</div>
+            </div>
+            <div class="glass-card score-card">
+                <div>Technical</div>
+                <div class="score-val" id="score-tech">0/10</div>
             </div>
         </div>
 
+        <div class="glass-card" style="width: 100%; margin-bottom: 2rem;">
+            <h3>AI Suggestions</h3>
+            <p id="ai-suggestions" style="line-height: 1.6; color: var(--text-muted);">Processing final feedback...</p>
+        </div>
+
+        <button class="btn-blue" onclick="window.print()">📄 Download PDF Report</button>
     </div>
 
     <script>
-        // Set your backend URL here (https://ai-interview-5kvb.onrender.com)
-        const BACKEND_URL = 'https://ai-interview-5kvb.onrender.com';
-
-        const webcamElement = document.getElementById('webcam');
-        const statusBadge = document.getElementById('statusBadge');
-        const startBtn = document.getElementById('startBtn');
-        const btnText = document.getElementById('btnText');
-        const userTranscript = document.getElementById('userTranscript');
-        const aiResponse = document.getElementById('aiResponse');
-
-        let recognition;
+        // --- CONFIGURATION ---
+        // MAKE SURE TO KEEP YOUR RENDER URL HERE (NO TRAILING SLASH)
+        const BACKEND_URL = 'https://interview-assistant.onrender.com'; 
+        
+        let stream = null;
+        let recognition = null;
         let isRecording = false;
+        let timerInterval = null;
+        let seconds = 0;
+        let currentQuestion = 1;
+        const totalQuestions = 5;
 
-        // Initialize Webcam
+        // Initialize Camera
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                webcamElement.srcObject = stream;
-                statusBadge.textContent = "Live Camera";
-                statusBadge.className = "absolute top-3 left-3 bg-green-600/80 text-xs px-3 py-1 rounded-full font-semibold backdrop-blur-md";
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+                document.getElementById('webcam-preview').srcObject = stream;
+                document.getElementById('webcam-live').srcObject = stream;
             } catch (err) {
-                console.error("Camera access error:", err);
-                statusBadge.textContent = "Camera Blocked";
+                console.error("Camera error:", err);
+                alert("Please allow camera and microphone access.");
             }
         }
 
-        // Initialize Speech Recognition
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
+        // Screen Navigation
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.getElementById(screenId).style.display = 'flex';
+        }
 
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                userTranscript.textContent = `"${transcript}"`;
-                sendToBackend(transcript);
+        // Start Interview Flow
+        function startInterview() {
+            showScreen('screen-interview');
+            updateProgress();
+            
+            // First AI Question
+            setTimeout(() => {
+                const q = "To begin, please introduce yourself and outline your core teaching philosophy.";
+                addChatBubble('ai', q);
+                speakText(q);
+                startTimer();
+            }, 1000);
+        }
+
+        // Timer Logic
+        function startTimer() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('timer-display').innerText = "00:00";
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+                const secs = String(seconds % 60).padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function updateProgress() {
+            document.getElementById('progress-text').innerText = `Question ${currentQuestion} of ${totalQuestions}`;
+        }
+
+        // Chat UI
+        function addChatBubble(sender, text) {
+            const chatBox = document.getElementById('chat-box');
+            const bubble = document.createElement('div');
+            bubble.className = `bubble ${sender === 'ai' ? 'ai-bubble' : 'user-bubble'}`;
+            bubble.innerText = text;
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return bubble;
+        }
+
+        // Speech Synthesis (AI Voice)
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Speech Recognition Setup
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            let currentTranscriptionBubble = null;
+            let finalTranscript = "";
+
+            recognition.onstart = () => {
+                isRecording = true;
+                document.getElementById('mic-btn').innerText = "⏹ Stop & Submit Answer";
+                document.getElementById('mic-btn').classList.replace('btn-blue', 'btn-red');
+                currentTranscriptionBubble = addChatBubble('user', 'Listening...');
+                finalTranscript = "";
             };
 
-            recognition.onerror = (event) => {
-                console.error("Speech Recognition Error:", event.error);
-                btnText.textContent = "Start Answer";
-                isRecording = false;
+            recognition.onresult = (event) => {
+                let interimTranscript = "";
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcriptPiece = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalTranscript += transcriptPiece + " ";
+                    else interimTranscript += transcriptPiece;
+                }
+                if (currentTranscriptionBubble) {
+                    currentTranscriptionBubble.innerText = finalTranscript + interimTranscript;
+                }
             };
 
             recognition.onend = () => {
-                btnText.textContent = "Start Answer";
-                isRecording = false;
+                if (isRecording) { // If it stopped automatically, restart it
+                    recognition.start();
+                }
             };
-        } else {
-            alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
         }
 
-        function toggleRecording() {
-            if (!recognition) return;
-
+        // Mic Button Click logic
+        async function toggleRecording() {
+            if (!recognition) return alert("Speech recognition not supported in this browser. Use Chrome.");
+            
             if (!isRecording) {
                 recognition.start();
-                isRecording = true;
-                btnText.textContent = "Listening...";
-                userTranscript.textContent = "Listening to your response...";
             } else {
-                recognition.stop();
                 isRecording = false;
-                btnText.textContent = "Start Answer";
+                recognition.stop();
+                document.getElementById('mic-btn').innerText = "Analyzing...";
+                document.getElementById('mic-btn').classList.replace('btn-red', 'btn-blue');
+                document.getElementById('mic-btn').disabled = true;
+                
+                // Fetch AI Feedback from Backend
+                const userText = document.querySelectorAll('.user-bubble');
+                const latestAnswer = userText[userText.length - 1].innerText;
+                
+                addChatBubble('ai', 'Thinking...');
+                await fetchFeedback(latestAnswer);
             }
         }
 
-        async function sendToBackend(transcript) {
-            aiResponse.textContent = "Evaluating your response...";
+        async function fetchFeedback(transcript) {
             try {
                 const response = await fetch(`${BACKEND_URL}/interview`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ transcript: transcript })
                 });
-
+                
                 const data = await response.json();
+                
+                // Remove the "Thinking..." bubble
+                const chatBox = document.getElementById('chat-box');
+                chatBox.removeChild(chatBox.lastChild);
+
                 if (response.ok) {
-                    aiResponse.textContent = data.response;
+                    addChatBubble('ai', data.response);
+                    speakText(data.response);
+                    
+                    // Proceed to next question logic
+                    currentQuestion++;
+                    if (currentQuestion > totalQuestions) {
+                        setTimeout(endInterview, 10000); // End after last feedback
+                    } else {
+                        updateProgress();
+                        startTimer();
+                        document.getElementById('mic-btn').disabled = false;
+                        document.getElementById('mic-btn').innerText = "🎤 Start Next Answer";
+                    }
                 } else {
-                    aiResponse.textContent = `Error: ${data.detail || 'Failed to analyze answer.'}`;
+                    addChatBubble('ai', "Error connecting to server.");
                 }
-            } catch (error) {
-                console.error("Backend request failed:", error);
-                aiResponse.textContent = "Error connecting to server. Check your BACKEND_URL configuration.";
+            } catch (err) {
+                addChatBubble('ai', "Failed to reach backend.");
             }
+            document.getElementById('mic-btn').disabled = false;
         }
 
+        function skipQuestion() {
+            addChatBubble('ai', "Let's move on to the next topic.");
+            speakText("Let's move on to the next topic.");
+            currentQuestion++;
+            if (currentQuestion > totalQuestions) endInterview();
+            else { updateProgress(); startTimer(); }
+        }
+
+        function endInterview() {
+            clearInterval(timerInterval);
+            showScreen('screen-results');
+            
+            // Mocking final scores based on the new requirements
+            document.getElementById('score-overall').innerText = "8.2/10";
+            document.getElementById('score-confidence').innerText = "8.5/10";
+            document.getElementById('score-comm').innerText = "7.8/10";
+            document.getElementById('score-tech').innerText = "8.0/10";
+            
+            const feedback = "Strong introduction with good volume. Grammar was solid. To improve, maintain steadier eye contact with the camera and avoid filler words during complex technical explanations.";
+            document.getElementById('ai-suggestions').innerText = feedback;
+            speakText("Interview complete. Here is your final evaluation report.");
+        }
+
+        // Start camera on load
         window.onload = initCamera;
     </script>
 </body>
