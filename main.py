@@ -33,9 +33,8 @@ def read_root():
 @app.post("/interview")
 async def process_interview(request: InterviewRequest):
     try:
-        # Using the fast model for real-time conversation
-            model = genai.GenerativeModel("gemini-1.5-flash")
-
+        # Using the fast, stable model for real-time conversation
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         # The friendly AI prompt with dynamic scoring
         prompt = (
