@@ -1,37 +1,43 @@
-import os
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from google import genai
+from fastapi.middleware.cors import CORSMiddleware
+import google.generativeai as genai
+import os
 
-app = FastAPI(title="AI Interviewer API")
+# Initialize FastAPI app
+app = FastAPI()
 
-# Enable CORS for Vercel/Frontend integration
+# Allow your Vercel frontend to communicate with this Render backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class AnswerRequest(BaseModel):
+# Configure Google Gemini API
+API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=API_KEY)
+
+# Define the expected data format from the frontend
+class InterviewRequest(BaseModel):
     transcript: str
 
+# Health check route (to wake up Render and test connection)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Interview Assistant Backend is Running"}
 
+# Main AI Interview route
 @app.post("/interview")
-def evaluate_interview(request: AnswerRequest):
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set in environment variables.")
-
+async def process_interview(request: InterviewRequest):
     try:
-        client = genai.Client(api_key=api_key)
+        # Using the fast model for real-time conversation
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
-                prompt = (
+        # The friendly AI prompt with dynamic scoring
+        prompt = (
             "You are a warm, supportive, and friendly AI Interviewer for a university Lecturer position. "
             "Evaluate the candidate's spoken answer below in real-time.\n\n"
             "Format your response EXACTLY like this (do not use markdown formatting):\n"
@@ -40,15 +46,11 @@ def evaluate_interview(request: AnswerRequest):
             "Next Question: [Ask the next interview question nicely]\n\n"
             f"Candidate's Answer:\n\"{request.transcript}\""
         )
-
         
-
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt,
-        )
-
+        response = model.generate_content(prompt)
+        
         return {"response": response.text}
-
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error generating response: {e}")
+        raise HTTPException(status_code=500, detail="Failed to analyze answer with AI.")
