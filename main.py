@@ -31,13 +31,17 @@ def evaluate_interview(request: AnswerRequest):
     try:
         client = genai.Client(api_key=api_key)
         
-        prompt = (
-            "You are a professional, strict yet encouraging panel interviewer evaluating a candidate "
-            "for an English Lecturer position. Evaluate their answer considering communication skills, "
-            "clarity, confidence, and pedagogy.\n\n"
-            f"Candidate's Spoken Answer:\n\"{request.transcript}\"\n\n"
-            "Provide brief, constructive feedback (3-4 sentences max) and end with the next interview question."
+                prompt = (
+            "You are a warm, supportive, and friendly AI Interviewer for a university Lecturer position. "
+            "Evaluate the candidate's spoken answer below in real-time.\n\n"
+            "Format your response EXACTLY like this (do not use markdown formatting):\n"
+            "Feedback: [Provide 2 brief, highly encouraging sentences evaluating their answer. Be kind, constructive, and friendly.]\n"
+            "Scores - Confidence: [1-10], Technical: [1-10], Communication: [1-10]\n"
+            "Next Question: [Ask the next interview question nicely]\n\n"
+            f"Candidate's Answer:\n\"{request.transcript}\""
         )
+
+        
 
         response = client.models.generate_content(
             model='gemini-3.6-flash',
